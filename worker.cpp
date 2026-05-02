@@ -72,30 +72,31 @@ double Worker::getWifiSignal() {
 
     GUID guid = pIfList->InterfaceInfo[0].InterfaceGuid;
 
-    PWLAN_CONNECTION_ATTRIBUTES pConnectInfo = nullptr;
+    //PWLAN_CONNECTION_ATTRIBUTES pConnectInfo = nullptr;
+    LONG* pRssi = nullptr;
     DWORD dataSize = 0;
     WLAN_OPCODE_VALUE_TYPE opCode;
 
     DWORD res = WlanQueryInterface(
         hClient,
         &guid,
-        wlan_intf_opcode_current_connection,
+        wlan_intf_opcode_rssi,
         nullptr,
         &dataSize,
-        (PVOID*)&pConnectInfo,
+        (PVOID*)&pRssi,
         &opCode
     );
 
     double signal = -1;
 
-    if (res == ERROR_SUCCESS && pConnectInfo) {
-        signal = (double)pConnectInfo->wlanAssociationAttributes.wlanSignalQuality;
+    if (res == ERROR_SUCCESS && pRssi) {
+        signal = *pRssi;
     }else{
         wprintf(L"WlanQueryInterface failed with error: %u\n", res);
     }
 
-    if (pConnectInfo)
-        WlanFreeMemory(pConnectInfo);
+    if (pRssi)
+        WlanFreeMemory(pRssi);
 
     WlanFreeMemory(pIfList);
     WlanCloseHandle(hClient, nullptr);
