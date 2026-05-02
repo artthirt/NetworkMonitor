@@ -19,6 +19,8 @@ public:
 
     void setIp(const QString &ip) { mIp = ip; }
 
+    static bool isWifiConnected();
+
 signals:
     void newData(double t, double ping, double signal);
 

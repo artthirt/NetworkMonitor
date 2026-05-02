@@ -10,6 +10,8 @@ MainWindow::MainWindow() {
     auto* startBtn = new QPushButton("Start");
     auto* stopBtn = new QPushButton("Stop");
 
+    isWifi_ = Worker::isWifiConnected();
+
     auto hlIp = new QHBoxLayout;
     hlIp->addWidget(new QLabel("IP"));
     leIP_ = new QLineEdit;
@@ -25,21 +27,22 @@ MainWindow::MainWindow() {
     layout->addLayout(hl);
 
     chart_ = new QChart();
-    chartS_ = new QChart();
     pingSeries_ = new QLineSeries();
-    signalSeries_ = new QLineSeries();
-
+    pingSeries_->setName("Ping (ms)");
     chart_->addSeries(pingSeries_);
-    chartS_->addSeries(signalSeries_);
-
     chart_->createDefaultAxes();
-    chartS_->createDefaultAxes();
-
     view_ = new QChartView(chart_);
     layout->addWidget(view_);
 
-    viewS_ = new QChartView(chartS_);
-    layout->addWidget(viewS_);
+    if(isWifi_){
+        chartS_ = new QChart();
+        signalSeries_ = new QLineSeries();
+        signalSeries_->setName("Wifi Signal (dB)");
+        chartS_->addSeries(signalSeries_);
+        chartS_->createDefaultAxes();
+        viewS_ = new QChartView(chartS_);
+        layout->addWidget(viewS_);
+    }
 
     setCentralWidget(central);
 
@@ -79,42 +82,46 @@ void MainWindow::stop() {
 void MainWindow::onData(double t, double ping, double signal) {
     times_.push_back(t);
     pings_.push_back(ping);
-    signals_.push_back(signal);
+    if(isWifi_)
+        signals_.push_back(signal);
 
     if (times_.size() > 60) {
         times_.pop_front();
         pings_.pop_front();
-        signals_.pop_front();
+        if(isWifi_)
+            signals_.pop_front();
     }
 
     qDebug("ping %.2f, signal %.2f", ping, signal);
 
-    pingSeries_->clear();
-    signalSeries_->clear();
-
-    double min = ping, max = ping;
-    for (size_t i = 0; i < times_.size(); i++) {
-        pingSeries_->append(times_[i], pings_[i]);
-        min = std::min(min, pings_[i]);
-        max = std::max(max, pings_[i]);
+    {
+        pingSeries_->clear();
+        double min = ping, max = ping;
+        for (size_t i = 0; i < times_.size(); i++) {
+            pingSeries_->append(times_[i], pings_[i]);
+            min = std::min(min, pings_[i]);
+            max = std::max(max, pings_[i]);
+        }
+        chart_->axes(Qt::Horizontal).first()->setRange(times_.front(), times_.back());
+        chart_->axes(Qt::Vertical).first()->setRange(min, max);
+        chart_->update();
+        chart_->zoomReset();
+        view_->repaint();
     }
-    chart_->axes(Qt::Horizontal).first()->setRange(times_.front(), times_.back());
-    chart_->axes(Qt::Vertical).first()->setRange(min, max);
 
-    min = signal, max = signal;
-    for (size_t i = 0; i < times_.size(); i++) {
-        signalSeries_->append(times_[i], signals_[i]);
-        min = std::min(min, signals_[i]);
-        max = std::max(max, signals_[i]);
+    if(isWifi_){
+        signalSeries_->clear();
+        double min = signal, max = signal;
+        for (size_t i = 0; i < times_.size(); i++) {
+            signalSeries_->append(times_[i], signals_[i]);
+            min = std::min(min, signals_[i]);
+            max = std::max(max, signals_[i]);
+        }
+        chartS_->axes(Qt::Horizontal).first()->setRange(times_.front(), times_.back());
+        chartS_->axes(Qt::Vertical).first()->setRange(min, max + 1);
+
+        chartS_->update();
+        chartS_->zoomReset();
+        viewS_->repaint();
     }
-    chartS_->axes(Qt::Horizontal).first()->setRange(times_.front(), times_.back());
-    chartS_->axes(Qt::Vertical).first()->setRange(min, max + 1);
-
-    chart_->update();
-    chart_->zoomReset();
-    view_->repaint();
-
-    chartS_->update();
-    chartS_->zoomReset();
-    viewS_->repaint();
 }

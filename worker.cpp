@@ -17,6 +17,36 @@ void Worker::stop() {
     running = false;
 }
 
+bool Worker::isWifiConnected()
+{
+    HANDLE hClient = nullptr;
+    DWORD version = 0;
+
+    if (WlanOpenHandle(2, nullptr, &version, &hClient) != ERROR_SUCCESS)
+        return false;
+
+    PWLAN_INTERFACE_INFO_LIST pIfList = nullptr;
+
+    if (WlanEnumInterfaces(hClient, nullptr, &pIfList) != ERROR_SUCCESS) {
+        WlanCloseHandle(hClient, nullptr);
+        return false;
+    }
+
+    bool connected = false;
+
+    for (unsigned int i = 0; i < pIfList->dwNumberOfItems; ++i) {
+        if (pIfList->InterfaceInfo[i].isState == wlan_interface_state_connected) {
+            connected = true;
+            break;
+        }
+    }
+
+    WlanFreeMemory(pIfList);
+    WlanCloseHandle(hClient, nullptr);
+
+    return connected;
+}
+
 double Worker::pingHost(const char* ip)
 {
     HANDLE hIcmp = IcmpCreateFile();

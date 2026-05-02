@@ -25,6 +25,7 @@ private slots:
 private:
     QThread workerThread_;
     Worker* worker_ = nullptr;
+    bool isWifi_{};
 
     QLineEdit* leIP_{};
 
